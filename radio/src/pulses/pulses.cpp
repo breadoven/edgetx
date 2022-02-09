@@ -563,7 +563,7 @@ static void enablePulsesInternalModule(uint8_t protocol)
 
       // serial port setup
       etx_serial_init params;
-      params.baudrate  = CROSSFIRE_BAUDRATE;
+      params.baudrate  = INT_CROSSFIRE_BAUDRATE;
       params.rx_enable = true;
 
       // wakeup mixer when rx buffer is quarter full (16 bytes)
