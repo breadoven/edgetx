@@ -111,12 +111,6 @@ void intmoduleSerialStart(const etx_serial_init* params)
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
-  // rco: workaround for high baudrate not supported with
-  //      IRQ based TX.
-  if (baudrate > 1870000) {
-    TRACE("limiting baudrate to 1.87 MBit/s");
-    baudrate = 1870000;
-  }
 #endif
 
   GPIO_PinAFConfig(INTMODULE_GPIO, INTMODULE_GPIO_PinSource_TX, INTMODULE_GPIO_AF);
