@@ -423,9 +423,9 @@ QString GeneralSettings::auxSerialModeToString() const
   return auxSerialModeToString(auxSerialMode);
 }
 
-QString GeneralSettings::telemetryBaudrateToString() const
+QString GeneralSettings::internalModuleBaudrateToString() const
 {
-  return telemetryBaudrateToString(telemetryBaudrate);
+  return moduleBaudrateToString(internalModuleBaudrate);
 }
 
 //  static
@@ -486,9 +486,9 @@ QString GeneralSettings::auxSerialModeToString(int value)
 }
 
 //  static
-QString GeneralSettings::telemetryBaudrateToString(int value)
+QString GeneralSettings::moduleBaudrateToString(int value)
 {
-  return telemetryBaudratesList.value(value, CPN_STR_UNKNOWN_ITEM);
+  return moduleBaudratesList.value(value, CPN_STR_UNKNOWN_ITEM);
 }
 
 //  static
@@ -560,13 +560,13 @@ AbstractStaticItemModel * GeneralSettings::auxSerialModeItemModel()
 }
 
 //  static
-AbstractStaticItemModel * GeneralSettings::telemetryBaudrateItemModel()
+AbstractStaticItemModel * GeneralSettings::internalModuleBaudrateItemModel()
 {
   AbstractStaticItemModel * mdl = new AbstractStaticItemModel();
-  mdl->setName(AIM_GS_TELEMETRYBAUDRATE);
+  mdl->setName(AIM_GS_INTMODULEBAUDRATE);
 
-  for (int i = 0; i < telemetryBaudratesList.size(); i++) {
-    mdl->appendToItemList(telemetryBaudrateToString(i), i);
+  for (int i = 0; i < moduleBaudratesList.size(); i++) {
+    mdl->appendToItemList(moduleBaudrateToString(i), i);
   }
 
   mdl->loadItemList();

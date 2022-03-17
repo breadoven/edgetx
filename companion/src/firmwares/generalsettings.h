@@ -39,11 +39,12 @@ class AbstractStaticItemModel;
 constexpr char AIM_GS_ANTENNAMODE[]        {"gs.antennamode"};
 constexpr char AIM_GS_BLUETOOTHMODE[]      {"gs.bluetoothmode"};
 constexpr char AIM_GS_AUXSERIALMODE[]      {"gs.auxserialmode"};
-constexpr char AIM_GS_TELEMETRYBAUDRATE[]  {"gs.telemetrybaudrate"};
+constexpr char AIM_GS_INTMODULEBAUDRATE[]  {"gs.intmodulebaudrate"};
 constexpr char AIM_TRAINERMIX_MODE[]       {"trainermix.mode"};
 constexpr char AIM_TRAINERMIX_SRC[]        {"trainermix.src"};
 
-static const QStringList telemetryBaudratesList({ "115K", "400K", "921K", "1.87M", "3.75M", "5.25M" });
+static const QStringList moduleBaudratesList({"115K", "400K", "921K", "1.87M",
+                                              "3.75M", "5.25M"});
 
 enum UartModes {
   UART_MODE_NONE,
@@ -183,7 +184,7 @@ class GeneralSettings {
     bool adjustRTC;
     bool optrexDisplay;
     unsigned int inactivityTimer;
-    unsigned int telemetryBaudrate;
+    unsigned int internalModuleBaudrate;
     bool minuteBeep;
     bool preBeep;
     bool flashBeep;
@@ -258,16 +259,16 @@ class GeneralSettings {
     QString antennaModeToString() const;
     QString bluetoothModeToString() const;
     QString auxSerialModeToString() const;
-    QString telemetryBaudrateToString() const;
+    QString internalModuleBaudrateToString() const;
 
     static QString antennaModeToString(int value);
     static QString bluetoothModeToString(int value);
     static QString auxSerialModeToString(int value);
-    static QString telemetryBaudrateToString(int value);
+    static QString moduleBaudrateToString(int value);
     static FieldRange getPPM_MultiplierRange();
     static FieldRange getTxCurrentCalibration();
     static AbstractStaticItemModel * antennaModeItemModel();
     static AbstractStaticItemModel * bluetoothModeItemModel();
     static AbstractStaticItemModel * auxSerialModeItemModel();
-    static AbstractStaticItemModel * telemetryBaudrateItemModel();
+    static AbstractStaticItemModel * internalModuleBaudrateItemModel();
 };
