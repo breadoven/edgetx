@@ -96,7 +96,8 @@ const char * runPopupMenu(event_t event)
 
   switch (event) {
 #if defined(ROTARY_ENCODER_NAVIGATION)
-    CASE_EVT_ROTARY_LEFT
+    // CASE_EVT_ROTARY_LEFT     // BOC1
+    CASE_EVT_ROTARY_RIGHT
 #endif
     case EVT_KEY_FIRST(KEY_UP):
     case EVT_KEY_REPT(KEY_UP):
@@ -121,7 +122,8 @@ const char * runPopupMenu(event_t event)
       break;
 
 #if defined(ROTARY_ENCODER_NAVIGATION)
-    CASE_EVT_ROTARY_RIGHT
+    // CASE_EVT_ROTARY_RIGHT    // BOC1
+    CASE_EVT_ROTARY_LEFT
 #endif
     case EVT_KEY_FIRST(KEY_DOWN):
     case EVT_KEY_REPT(KEY_DOWN):
