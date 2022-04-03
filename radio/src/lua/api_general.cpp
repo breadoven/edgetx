@@ -2656,17 +2656,17 @@ const luaR_value_entry opentxConstants[] = {
 // Virtual events
 #if defined(ROTARY_ENCODER_NAVIGATION)
 // BOC1
-  // if (g_eeGeneral.rotEncDirection == 1) {
-    // { "EVT_VIRTUAL_PREV", EVT_ROTARY_RIGHT },
-    // { "EVT_VIRTUAL_NEXT", EVT_ROTARY_LEFT },
-    // { "EVT_VIRTUAL_DEC", EVT_ROTARY_RIGHT },
-    // { "EVT_VIRTUAL_INC", EVT_ROTARY_LEFT },
-  // } else {
+#if defined(RADIO_ZORRO)
+    { "EVT_VIRTUAL_PREV", EVT_ROTARY_RIGHT },
+    { "EVT_VIRTUAL_NEXT", EVT_ROTARY_LEFT },
+    { "EVT_VIRTUAL_DEC", EVT_ROTARY_RIGHT },
+    { "EVT_VIRTUAL_INC", EVT_ROTARY_LEFT },
+#else
     { "EVT_VIRTUAL_PREV", EVT_ROTARY_LEFT },
     { "EVT_VIRTUAL_NEXT", EVT_ROTARY_RIGHT },
     { "EVT_VIRTUAL_DEC", EVT_ROTARY_LEFT },
     { "EVT_VIRTUAL_INC", EVT_ROTARY_RIGHT },
-  // }
+#endif
 // BOC1
   { "ROTENC_LOWSPEED", ROTENC_LOWSPEED },
   { "ROTENC_MIDSPEED", ROTENC_MIDSPEED },
@@ -2800,19 +2800,15 @@ const luaR_value_entry opentxConstants[] = {
 
 #if defined(ROTARY_ENCODER_NAVIGATION)
 // BOC1
-  // if (g_eeGeneral.rotEncDirection == 1) {
-    // KEY_EVENTS(ROT, KEY_ENTER),
-    // { "EVT_ROT_LEFT", EVT_ROTARY_RIGHT },
-    // { "EVT_ROT_RIGHT", EVT_ROTARY_LEFT },
-  // } else {
+#if defined(RADIO_ZORRO)
+    KEY_EVENTS(ROT, KEY_ENTER),
+    { "EVT_ROT_LEFT", EVT_ROTARY_RIGHT },
+    { "EVT_ROT_RIGHT", EVT_ROTARY_LEFT },
+#else
     KEY_EVENTS(ROT, KEY_ENTER),
     { "EVT_ROT_LEFT", EVT_ROTARY_LEFT },
     { "EVT_ROT_RIGHT", EVT_ROTARY_RIGHT },
-  // }
-
-  // KEY_EVENTS(ROT, KEY_ENTER),
-  // { "EVT_ROT_LEFT", EVT_ROTARY_LEFT },
-  // { "EVT_ROT_RIGHT", EVT_ROTARY_RIGHT },
+#endif
 // BOC1
 #endif
 

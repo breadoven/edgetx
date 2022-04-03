@@ -841,7 +841,7 @@ PACK(struct RadioData {
   int8_t antennaMode:2 ENUM(AntennaModes);
   uint8_t disableRtcWarning:1;
   uint8_t keysBacklight:1;
-  uint8_t spare1:1 SKIP;    // BOC1
+  int8_t rotEncDirection:1;
   NOBACKUP(uint8_t internalModule ENUM(ModuleType));
   NOBACKUP(TrainerData trainer);
   NOBACKUP(uint8_t view);            // index of view in main screen
@@ -913,7 +913,6 @@ PACK(struct RadioData {
   GYRO_FIELDS
 
   NOBACKUP(int8_t   uartSampleMode:2); // See UartSampleModes
-  uint8_t rotEncDirection:2;    // BOC1
 });
 
 #undef SWITCHES_WARNING_DATA

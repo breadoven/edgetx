@@ -75,8 +75,8 @@ void rotaryEncoderInit()
 #define INC_ROT        1
 #define INC_ROT_2      2
 #else
-#define INC_ROT        (g_eeGeneral.rotEncDirection == 2 ? -1 : 1);     // BOC1
-#define INC_ROT_2      (g_eeGeneral.rotEncDirection == 2 ? -2 : 2);     // BOC1
+#define INC_ROT        (g_eeGeneral.rotEncDirection ? -1 : 1);
+#define INC_ROT_2      (g_eeGeneral.rotEncDirection ? -2 : 2);
 #endif
 
 void rotaryEncoderCheck()
