@@ -151,7 +151,7 @@ class GeneralSettings {
       SP_VCP,
       SP_COUNT,
     };
-  
+
     GeneralSettings() { clear(); }
     void clear();
     void init();

@@ -110,7 +110,7 @@
 #define LEN_CURVE_TYPES                "\006"
 #define TR_CURVE_TYPES                 "标准\0 " "自定义"
 
-#define LEN_ADCFILTERVALUES             "\002"                                        
+#define LEN_ADCFILTERVALUES             "\002"
 #define TR_ADCFILTERVALUES              "全局""禁用" "开启"
 
 #define LEN_RETA123                    "\001"
@@ -285,7 +285,10 @@
 
 #define TR_ROTARY_ENCODERS
 #define TR_ROTENC_SWITCHES
-
+// BOC1
+#define LEN_INVERT_ROTARY_OPT         "\003"
+#define TR_INVERT_ROTARY_OPT          "OFF""ON\0""VRT"
+// BOC1
 #define TR_ON_ONE_SWITCHES             "ON\0" "One"
 
 #if defined(GYRO)
@@ -814,7 +817,7 @@
 #define TR_PATH_TOO_LONG               "路径太长"
 #define TR_VIEW_TEXT                   "查看文本"
 #define TR_FLASH_BOOTLOADER            "更新引导程序"
-#define TR_FLASH_DEVICE                TR("Flash device","Flash device")      
+#define TR_FLASH_DEVICE                TR("Flash device","Flash device")
 #define TR_FLASH_EXTERNAL_DEVICE       TR("Flash S.Port", "从 S.Port 端口更新外设固件")
 #define TR_FLASH_RECEIVER_OTA          "Flash receiver OTA"
 #define TR_FLASH_RECEIVER_BY_EXTERNAL_MODULE_OTA "Flash RX by ext. OTA"

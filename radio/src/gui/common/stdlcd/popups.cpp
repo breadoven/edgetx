@@ -93,11 +93,22 @@ const char * runPopupMenu(event_t event)
   if (popupMenuItemsCount > display_count) {
     drawVerticalScrollbar(MENU_X+MENU_W-1, y+1, MENU_MAX_DISPLAY_LINES * (FH+1), popupMenuOffset, popupMenuItemsCount, display_count);
   }
+// BOC1
+    event_t eventTemp = event;
 
-  switch (event) {
 #if defined(ROTARY_ENCODER_NAVIGATION)
-    // CASE_EVT_ROTARY_LEFT     // BOC1
-    CASE_EVT_ROTARY_RIGHT
+    if (g_eeGeneral.rotEncDirection == 1) {
+      if (eventTemp == EVT_ROTARY_LEFT) {
+        eventTemp = EVT_ROTARY_RIGHT;
+      } else if (eventTemp == EVT_ROTARY_RIGHT) {
+        eventTemp = EVT_ROTARY_LEFT;
+      }
+    }
+#endif
+// BOC1
+  switch (eventTemp) {  // BOC1
+#if defined(ROTARY_ENCODER_NAVIGATION)
+    CASE_EVT_ROTARY_LEFT
 #endif
     case EVT_KEY_FIRST(KEY_UP):
     case EVT_KEY_REPT(KEY_UP):
@@ -122,8 +133,7 @@ const char * runPopupMenu(event_t event)
       break;
 
 #if defined(ROTARY_ENCODER_NAVIGATION)
-    // CASE_EVT_ROTARY_RIGHT    // BOC1
-    CASE_EVT_ROTARY_LEFT
+    CASE_EVT_ROTARY_RIGHT
 #endif
     case EVT_KEY_FIRST(KEY_DOWN):
     case EVT_KEY_REPT(KEY_DOWN):

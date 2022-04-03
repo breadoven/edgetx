@@ -321,7 +321,10 @@
 
   #define TR_ROTARY_ENCODERS
   #define TR_ROTENC_SWITCHES
-
+// BOC1
+#define LEN_INVERT_ROTARY_OPT         "\003"
+#define TR_INVERT_ROTARY_OPT          "OFF""ON\0""VRT"
+// BOC1
 #define TR_ON_ONE_SWITCHES     "ON\0""One"
 
 #if defined(GYRO)
@@ -883,7 +886,7 @@
 #define TR_PATH_TOO_LONG       "Path too long"
 #define TR_VIEW_TEXT           "View text"
 #define TR_FLASH_BOOTLOADER    "Flash bootloader"
-#define TR_FLASH_DEVICE                TR("Flash device","Flash device")      
+#define TR_FLASH_DEVICE                TR("Flash device","Flash device")
 #define TR_FLASH_EXTERNAL_DEVICE "Flash External Device"
 #define TR_FLASH_RECEIVER_OTA          "Flash receiver OTA"
 #define TR_FLASH_RECEIVER_BY_EXTERNAL_MODULE_OTA "Flash RX by ext. OTA"
