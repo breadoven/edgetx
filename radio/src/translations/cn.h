@@ -197,9 +197,9 @@
 #define TR_ON_ONE_SWITCHES             "ON","One"
 
 #if defined(COLORLCD)
-#define TR_INVERT_ROTARY_OPT           "OFF","ON"
+  #define TR_INVERT_ROTARY_OPT         "OFF","ON"
 #else
-#define TR_INVERT_ROTARY_OPT           "OFF","ON","V-N","V-A"
+  #define TR_INVERT_ROTARY_OPT         "OFF","ON","V-N","V-A"
 #endif
 
 #if defined(GYRO)
@@ -1207,9 +1207,9 @@
 
 #define TR_ADD_ALL_TRIMS_TO_SUBTRIMS  "将所有微调导入中点偏移值"
 #if LCD_W > LCD_H
-  #define TR_OPEN_CHANNEL_MONITORS        "打开通道监视器" 
+  #define TR_OPEN_CHANNEL_MONITORS        "打开通道监视器"
 #else
-  #define TR_OPEN_CHANNEL_MONITORS        "通道监视" 
+  #define TR_OPEN_CHANNEL_MONITORS        "通道监视"
 #endif
 #define TR_DUPLICATE                  "复制"
 #define TR_ACTIVATE                   "启用"
