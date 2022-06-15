@@ -91,6 +91,10 @@
   { "EVT_"#xxx"_LONG", EVT_KEY_LONG(yyy) }, \
   { "EVT_"#xxx"_REPT", EVT_KEY_REPT(yyy) }
 
+// see strhelpers.cpp for pre-instantiation of function-template
+// getSourceString() for this parametrization
+static constexpr uint8_t maxSourceNameLength{16};
+
 // Note:
 // - luaRxFifo & luaReceiveData are used only for USB serial
 // - otherwise, the AUX serial buffer is used directly
@@ -543,6 +547,26 @@ static int luaGetRotEncSpeed(lua_State * L)
 {
 #if defined(ROTARY_ENCODER_NAVIGATION)
   lua_pushunsigned(L, rotencSpeed);
+#else
+  lua_pushunsigned(L, 0);
+#endif
+  return 1;
+}
+
+/*luadoc
+@function getRotEncInvert()
+
+Return rotary encoder inverted status
+
+@retval number in list: OFF = 0, ON = 1, V-N = 2, V-A = 3
+  return 0 on radio without rotary encoder
+
+@status current Introduced in 2.8.0
+*/
+static int luaGetRotEncInvert(lua_State * L)
+{
+#if defined(ROTARY_ENCODER_NAVIGATION)
+  lua_pushunsigned(L, g_eeGeneral.rotEncDirection);
 #else
   lua_pushunsigned(L, 0);
 #endif
@@ -2301,16 +2325,17 @@ This function is rather time consuming, and should not be used repeatedly in a s
 @status current Introduced in 2.6
 */
 
-static int luaGetSourceIndex(lua_State * L)
+static int luaGetSourceIndex(lua_State* const L)
 {
-  const char * name = luaL_checkstring(L, 1);
+  const char* const name = luaL_checkstring(L, 1);
   bool found = false;
   mixsrc_t idx;
 
   for (idx = MIXSRC_NONE; idx <= MIXSRC_LAST_TELEM; idx++) {
     if (isSourceAvailable(idx)) {
-      char* s = getSourceString(idx);
-      if (!strncasecmp(s, name, 31)) {
+      char srcName[maxSourceNameLength];
+      getSourceString(srcName, idx);
+      if (!strncasecmp(srcName, name)) {
         found = true;
         break;
       }
@@ -2341,11 +2366,12 @@ static int luaGetSourceName(lua_State * L)
 {
   mixsrc_t idx = luaL_checkinteger(L, 1);
   if (idx <= MIXSRC_LAST_TELEM && isSourceAvailable(idx)) {
-    char* name = getSourceString(idx);
-    lua_pushstring(L, name);
-  }
-  else
+    char srcName[maxSourceNameLength];
+    getSourceString(srcName, idx);
+    lua_pushstring(L, srcName);
+  } else {
     lua_pushnil(L);
+  }
   return 1;
 }
 
@@ -2368,9 +2394,10 @@ static int luaNextSource(lua_State * L)
 
   while (++idx <= last) {
     if (isSourceAvailable(idx)) {
-      char* name = getSourceString(idx);
+      char srcName[maxSourceNameLength];
+      getSourceString(srcName, idx);
       lua_pushinteger(L, idx);
-      lua_pushstring(L, name);
+      lua_pushstring(L, srcName);
       return 2;
     }
   }
@@ -2412,6 +2439,7 @@ const luaL_Reg opentxLib[] = {
   { "getGeneralSettings", luaGetGeneralSettings },
   { "getGlobalTimer", luaGetGlobalTimer },
   { "getRotEncSpeed", luaGetRotEncSpeed },
+  { "getRotEncInvert", luaGetRotEncInvert },
   { "getValue", luaGetValue },
   { "getRAS", luaGetRAS },
   { "getTxGPS", luaGetTxGPS },

@@ -19,10 +19,17 @@
  * GNU General Public License for more details.
  */
 
-#include "opentx.h"
+#include "board.h"
+#include "hal.h"
+#include "board_common.h"
 #include "heartbeat_driver.h"
 
-uint8_t rotencPosition;
+#if !defined(BOOT)
+  #include "opentx.h"
+#endif
+
+static uint8_t rotencPosition;
+volatile rotenc_t rotencValue;
 
 void rotaryEncoderInit()
 {
@@ -75,8 +82,8 @@ void rotaryEncoderInit()
 #define INC_ROT        1
 #define INC_ROT_2      2
 #else
-#define INC_ROT        (g_eeGeneral.rotEncDirection ? -1 : 1);
-#define INC_ROT_2      (g_eeGeneral.rotEncDirection ? -2 : 2);
+#define INC_ROT        (g_eeGeneral.rotEncDirection == 1 ? -1 : 1);
+#define INC_ROT_2      (g_eeGeneral.rotEncDirection == 1 ? -2 : 2);
 #endif
 
 void rotaryEncoderCheck()
@@ -123,12 +130,6 @@ void rotaryEncoderCheck()
       rotencValue += INC_ROT;
     }
     rotencPosition = newPosition;
-#endif
-#if !defined(BOOT)
-    if (g_eeGeneral.backlightMode & e_backlight_mode_keys) {
-      resetBacklightTimeout();
-    }
-    inactivity.counter = 0;
 #endif
   }
 }

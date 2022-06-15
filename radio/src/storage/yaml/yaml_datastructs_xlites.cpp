@@ -332,7 +332,7 @@ static const struct YamlNode struct_RadioData[] = {
   YAML_ENUM("antennaMode", 2, enum_AntennaModes),
   YAML_UNSIGNED( "disableRtcWarning", 1 ),
   YAML_UNSIGNED( "keysBacklight", 1 ),
-  YAML_SIGNED( "rotEncDirection", 1 ),
+  YAML_PADDING( 1 ),
   YAML_ENUM("internalModule", 8, enum_ModuleType),
   YAML_STRUCT("trainer", 128, struct_TrainerData, NULL),
   YAML_UNSIGNED( "view", 8 ),
@@ -388,7 +388,7 @@ static const struct YamlNode struct_RadioData[] = {
   YAML_ARRAY("customFn", 88, 64, struct_CustomFunctionData, cfn_is_active),
   YAML_CUSTOM("auxSerialMode",r_serialMode,nullptr),
   YAML_CUSTOM("aux2SerialMode",r_serialMode,nullptr),
-  YAML_ARRAY("serialPort", 4, 4, struct_serialConfig, nullptr),
+  YAML_ARRAY("serialPort", 8, 4, struct_serialConfig, nullptr),
   YAML_ARRAY("slidersConfig", 1, 4, struct_sliderConfig, nullptr),
   YAML_PADDING( 4 ),
   YAML_ARRAY("potsConfig", 2, 4, struct_potConfig, nullptr),
@@ -403,6 +403,8 @@ static const struct YamlNode struct_RadioData[] = {
   YAML_SIGNED( "gyroMax", 8 ),
   YAML_SIGNED( "gyroOffset", 8 ),
   YAML_SIGNED( "uartSampleMode", 2 ),
+  YAML_PADDING( 3 ),
+  YAML_UNSIGNED( "rotEncDirection", 2 ),
   YAML_END
 };
 static const struct YamlNode struct_unsigned_8[] = {

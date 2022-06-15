@@ -40,6 +40,7 @@ constexpr char AIM_GS_ANTENNAMODE[]        {"gs.antennamode"};
 constexpr char AIM_GS_BLUETOOTHMODE[]      {"gs.bluetoothmode"};
 constexpr char AIM_GS_SERIALMODE[]         {"gs.serialmode%1"};
 constexpr char AIM_GS_INTMODULEBAUDRATE[]  {"gs.intmodulebaudrate"};
+constexpr char AIM_GS_STICKDEADZONE[]      {"gs.stickdeadzone"};
 constexpr char AIM_TRAINERMIX_MODE[]       {"trainermix.mode"};
 constexpr char AIM_TRAINERMIX_SRC[]        {"trainermix.src"};
 
@@ -162,6 +163,7 @@ class GeneralSettings {
     RawSource getDefaultSource(unsigned int channel) const;
     int getDefaultChannel(unsigned int stick) const;
 
+    char semver[8 + 1];
     unsigned int version;
     unsigned int variant;
     int calibMid[CPN_MAX_ANALOGS];
@@ -186,6 +188,7 @@ class GeneralSettings {
     bool disableAlarmWarning;
     bool disableRssiPoweroffAlarm;
     unsigned int usbMode;
+    unsigned int stickDeadZone;
     unsigned int jackMode;
     bool sportPower;
     BeeperMode hapticMode;
@@ -228,7 +231,7 @@ class GeneralSettings {
     bool noJitterFilter;
     bool rtcCheckDisable;
     bool keysBacklight;
-    bool rotEncDirection;
+    unsigned int rotEncDirection;
     unsigned int imperial;
     char ttsLanguage[TTS_LANGUAGE_LEN + 1];
     int beepVolume;
@@ -241,6 +244,7 @@ class GeneralSettings {
     unsigned int mavbaud;
     unsigned int switchUnlockStates;
     unsigned int serialPort[SP_COUNT];
+    bool serialPower[SP_COUNT];
     int antennaMode;
     unsigned int backlightColor;
     CustomFunctionData customFn[CPN_MAX_SPECIAL_FUNCTIONS];
@@ -281,4 +285,5 @@ class GeneralSettings {
     static AbstractStaticItemModel * bluetoothModeItemModel();
     static AbstractStaticItemModel * serialModeItemModel(int port_nr);
     static AbstractStaticItemModel * internalModuleBaudrateItemModel();
+    static AbstractStaticItemModel * stickDeadZoneItemModel();
 };

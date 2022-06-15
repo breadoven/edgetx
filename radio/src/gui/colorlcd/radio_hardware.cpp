@@ -27,63 +27,16 @@
 #include "libopenui.h"
 #include "hal/adc_driver.h"
 #include "aux_serial_driver.h"
+#include "hw_intmodule.h"
+#include "hw_serial.h"
+#include "hw_inputs.h"
 
 #define SET_DIRTY() storageDirty(EE_GENERAL)
 
-#if defined(PCBHORUS)
-#define SWITCH_TYPE_MAX(sw)            ((MIXSRC_SF-MIXSRC_FIRST_SWITCH == sw || MIXSRC_SH-MIXSRC_FIRST_SWITCH == sw) ? SWITCH_2POS : SWITCH_3POS)
-#else
-#define SWITCH_TYPE_MAX(sw)            (SWITCH_3POS)
-#endif
-
-class SwitchDynamicLabel: public StaticText {
-  public:
-    SwitchDynamicLabel(Window * parent, const rect_t & rect, uint8_t index):
-      StaticText(parent, rect, "", 0, COLOR_THEME_PRIMARY1),
-      index(index)
-    {
-      update();
-    }
-
-    std::string label()
-    {
-      static const char switchPositions[] = {
-        CHAR_UP,
-        '-',
-        CHAR_DOWN
-      };
-      return TEXT_AT_INDEX(STR_VSRCRAW, (index + MIXSRC_FIRST_SWITCH - MIXSRC_Rud + 1)) + std::string(&switchPositions[lastpos], 1);
-    }
-
-    void update()
-    {
-      uint8_t newpos = position();
-      if (newpos != lastpos) {
-        lastpos = newpos;
-        setText(label());
-      }
-    }
-
-    uint8_t position()
-    {
-      auto value = getValue(MIXSRC_FIRST_SWITCH + index);
-      if (value > 0)
-        return 2;
-      else if (value < 0)
-        return 0;
-      else
-        return 1;
-    }
-
-    void checkEvents() override
-    {
-      update();
-    }
-
-  protected:
-    uint8_t index;
-    uint8_t lastpos = 0xff;
-};
+static const lv_coord_t col_dsc[] = {LV_GRID_FR(1), LV_GRID_FR(2),
+                                     LV_GRID_TEMPLATE_LAST};
+static const lv_coord_t row_dsc[] = {LV_GRID_CONTENT, LV_GRID_CONTENT,
+                                     LV_GRID_TEMPLATE_LAST};
 
 RadioHardwarePage::RadioHardwarePage():
   PageTab(STR_HARDWARE, ICON_RADIO_HARDWARE)
@@ -91,12 +44,11 @@ RadioHardwarePage::RadioHardwarePage():
 }
 
 #if defined(BLUETOOTH)
-
 class ModeChoice : public Choice
 {
  public:
-  ModeChoice(FormGroup *parent, const rect_t &rect, const char *values,
-             int vmin, int vmax, std::function<int()> getValue,
+  ModeChoice(Window *parent, const rect_t &rect, const char **values, int vmin,
+             int vmax, std::function<int()> getValue,
              std::function<void(int)> setValue = nullptr,
              bool *menuOpen = nullptr) :
       Choice(parent, rect, values, vmin, vmax, getValue, setValue),
@@ -117,372 +69,232 @@ class ModeChoice : public Choice
 
 class BluetoothConfigWindow : public FormGroup
 {
-  public:
-    BluetoothConfigWindow(FormWindow * parent, const rect_t &rect) :
-      FormGroup(parent, rect, FORWARD_SCROLL | FORM_FORWARD_FOCUS)
-    {
-      update();
-    }
-
-    void checkEvents() override
-    {
-      FormGroup::checkEvents();
-      if (!rte) return;
-      if (bluetooth.state != lastbluetoothstate) {
-        lastbluetoothstate = bluetooth.state;
-        if (!(modechoiceopen || rte->hasFocus())) update();
-      }
-    }
-
-    void update()
-    {
-      FormGridLayout grid;
-#if LCD_W > LCD_H
-      grid.setLabelWidth(180);
-#else
-      grid.setLabelWidth(130);
-#endif
-      clear();
-
-      new StaticText(this, grid.getLabelSlot(true), STR_MODE, 0,
-                     COLOR_THEME_PRIMARY1);
-      modechoiceopen = false;
-      btMode = new ModeChoice(
-          this, grid.getFieldSlot(), STR_BLUETOOTH_MODES, BLUETOOTH_OFF,
-          BLUETOOTH_TRAINER, GET_DEFAULT(g_eeGeneral.bluetoothMode),
-          [=](int32_t newValue) {
-            g_eeGeneral.bluetoothMode = newValue;
-            update();
-            SET_DIRTY();
-            btMode->setFocus(SET_FOCUS_DEFAULT);
-            modechoiceopen = false;
-          },
-          &modechoiceopen);
-      grid.nextLine();
-
-      if (g_eeGeneral.bluetoothMode != BLUETOOTH_OFF) {
-        // Pin code (displayed for information only, not editable)
-        if (g_eeGeneral.bluetoothMode == BLUETOOTH_TELEMETRY) {
-          new StaticText(this, grid.getLabelSlot(true), STR_BLUETOOTH_PIN_CODE, 0, COLOR_THEME_PRIMARY1);
-          new StaticText(this, grid.getFieldSlot(), "000000", 0, COLOR_THEME_PRIMARY1);
-          grid.nextLine();
-        }
-
-        // Local MAC
-        new StaticText(this, grid.getLabelSlot(true), STR_BLUETOOTH_LOCAL_ADDR, 0, COLOR_THEME_PRIMARY1);
-        new StaticText(this, grid.getFieldSlot(), bluetooth.localAddr[0] == '\0' ? "---" : bluetooth.localAddr, 0, COLOR_THEME_PRIMARY1);
-        grid.nextLine();
-
-        // Remote MAC
-        new StaticText(this, grid.getLabelSlot(true), STR_BLUETOOTH_DIST_ADDR, 0, COLOR_THEME_PRIMARY1);
-        new StaticText(this, grid.getFieldSlot(), bluetooth.distantAddr[0] == '\0' ? "---" : bluetooth.distantAddr, 0, COLOR_THEME_PRIMARY1);
-        grid.nextLine();
-
-        // BT radio name
-        new StaticText(this, grid.getLabelSlot(true), STR_NAME, 0, COLOR_THEME_PRIMARY1);
-        rte = new RadioTextEdit(this, grid.getFieldSlot(), g_eeGeneral.bluetoothName, LEN_BLUETOOTH_NAME);
-        grid.nextLine();
-      }
-
-      getParent()->moveWindowsTop(top() + 1, adjustHeight());
-    }
-
-   protected:
-    Choice *btMode = nullptr;
-    RadioTextEdit *rte = nullptr;
-
-   private:
-    bool modechoiceopen = false;
-    uint8_t lastbluetoothstate = BLUETOOTH_STATE_OFF;
-};
-#endif
-
-class SerialConfigWindow : public FormGroup
-{
  public:
-  SerialConfigWindow(FormWindow *parent, const rect_t &rect) :
-      FormGroup(parent, rect, FORWARD_SCROLL | FORM_FORWARD_FOCUS)
+  BluetoothConfigWindow(Window *parent, const rect_t &rect) :
+      FormGroup(parent, rect, FORWARD_SCROLL)
   {
     update();
-  }
-
-  void update()
-  {
-    FormGridLayout grid;
-#if LCD_W > LCD_H
-    grid.setLabelWidth(180);
-#else
-    grid.setLabelWidth(130);
-#endif
-    clear();
-
-    bool display_ttl_warning = false;
-    for (uint8_t port_nr = 0; port_nr < MAX_SERIAL_PORTS; port_nr++) {
-      auto port = serialGetPort(port_nr);
-      if (!port || !port->name) continue;
-
-      display_ttl_warning = true;
-      new StaticText(this, grid.getLabelSlot(true), port->name, 0,
-                     COLOR_THEME_PRIMARY1);
-      auto aux = new Choice(
-          this, grid.getFieldSlot(), STR_AUX_SERIAL_MODES, 0,
-          UART_MODE_MAX, [=]() { return serialGetMode(port_nr); },
-          [=](int value) {
-            serialSetMode(port_nr, value);
-            serialInit(port_nr, value);
-            SET_DIRTY();
-          });
-      aux->setAvailableHandler(
-          [=](int value) { return isSerialModeAvailable(port_nr, value); });
-      grid.nextLine();
-    }
-
-    if (display_ttl_warning) {
-      new StaticText(this, grid.getFieldSlot(), STR_TTL_WARNING, 0,
-                     COLOR_THEME_WARNING);
-      grid.nextLine();
-    }
-
-    getParent()->moveWindowsTop(top() + 1, adjustHeight());
-  }
-};
-
-class InternalModuleWindow : public FormGroup {
- public:
-  InternalModuleWindow(FormWindow *parent, const rect_t &rect) :
-      FormGroup(parent, rect, FORWARD_SCROLL | FORM_FORWARD_FOCUS)
-  {
-    update();
-  }
-
-  void update()
-  {
-    FormGridLayout grid;
-#if LCD_W > LCD_H
-    grid.setLabelWidth(180);
-#else
-    grid.setLabelWidth(130);
-#endif
-    clear();
-
-    new StaticText(this, grid.getLabelSlot(), TR_INTERNAL_MODULE, 0,
-                   COLOR_THEME_PRIMARY1);
-    auto internalModule = new Choice(this, grid.getFieldSlot(1, 0),STR_INTERNAL_MODULE_PROTOCOLS, MODULE_TYPE_NONE, MODULE_TYPE_COUNT - 1,
-                                     GET_DEFAULT(g_eeGeneral.internalModule),
-                                     [=](int moduleType) {
-                                       if (g_model.moduleData[INTERNAL_MODULE].type != moduleType) {
-                                         memclear(&g_model.moduleData[INTERNAL_MODULE], sizeof(ModuleData));
-                                         storageDirty(EE_MODEL);
-                                       }
-                                       g_eeGeneral.internalModule = moduleType;
-                                       SET_DIRTY();
-                                     });
-
-    internalModule->setAvailableHandler([](int module){
-      return isInternalModuleSupported(module);
-    });
-
-#if defined(CROSSFIRE)
-    if (isInternalModuleCrossfire()) {
-      grid.nextLine();
-      new StaticText(this, grid.getLabelSlot(), STR_BAUDRATE, 0,COLOR_THEME_PRIMARY1);
-      new Choice(this, grid.getFieldSlot(1, 0), STR_CRSF_BAUDRATE, 0,CROSSFIRE_MAX_INTERNAL_BAUDRATE,
-          [=]() -> int {
-            return CROSSFIRE_STORE_TO_INDEX(g_eeGeneral.internalModuleBaudrate);
-          },
-          [=](int newValue) {
-            g_eeGeneral.internalModuleBaudrate = CROSSFIRE_INDEX_TO_STORE(newValue);
-            SET_DIRTY();
-            restartModule(INTERNAL_MODULE);
-          });
-      grid.nextLine();
-    }
-    auto par = getParent();
-    par->moveWindowsTop(top() + 1, adjustHeight());
-    par->adjustInnerHeight();
-#endif
   }
 
   void checkEvents() override
   {
-    if (g_eeGeneral.internalModule != lastModule) {
-      lastModule = g_eeGeneral.internalModule;
-      update();
-    }
-
     FormGroup::checkEvents();
+    if (!rte) return;
+    if (bluetooth.state != lastbluetoothstate) {
+      lastbluetoothstate = bluetooth.state;
+      if (!(modechoiceopen || rte->hasFocus())) update();
+    }
+  }
+
+  void update()
+  {
+    clear();
+
+    setFlexLayout();
+    FlexGridLayout grid(col_dsc, row_dsc, 2);
+    lv_obj_set_style_pad_left(lvobj, lv_dpx(8), 0);
+
+    auto line = newLine(&grid);
+    new StaticText(line, rect_t{}, STR_MODE, 0, COLOR_THEME_PRIMARY1);
+
+    modechoiceopen = false;
+    btMode = new ModeChoice(
+        line, rect_t{}, STR_BLUETOOTH_MODES, BLUETOOTH_OFF, BLUETOOTH_TRAINER,
+        GET_DEFAULT(g_eeGeneral.bluetoothMode),
+        [=](int32_t newValue) {
+          g_eeGeneral.bluetoothMode = newValue;
+          update();
+          modechoiceopen = false;
+          SET_DIRTY();
+        },
+        &modechoiceopen);
+
+    if (g_eeGeneral.bluetoothMode != BLUETOOTH_OFF) {
+      // Pin code (displayed for information only, not editable)
+      if (g_eeGeneral.bluetoothMode == BLUETOOTH_TELEMETRY) {
+        line = newLine(&grid);
+        auto label = new StaticText(line, rect_t{}, STR_BLUETOOTH_PIN_CODE, 0,
+                                    COLOR_THEME_PRIMARY1);
+        lv_obj_set_style_pad_left(label->getLvObj(), lv_dpx(8), LV_PART_MAIN);
+        new StaticText(line, rect_t{}, "000000", 0, COLOR_THEME_PRIMARY1);
+      }
+
+      // Local MAC
+      line = newLine(&grid);
+      auto label = new StaticText(line, rect_t{}, STR_BLUETOOTH_LOCAL_ADDR, 0,
+                                  COLOR_THEME_PRIMARY1);
+      lv_obj_set_style_pad_left(label->getLvObj(), lv_dpx(8), LV_PART_MAIN);
+      new StaticText(
+          line, rect_t{},
+          bluetooth.localAddr[0] == '\0' ? "---" : bluetooth.localAddr, 0,
+          COLOR_THEME_PRIMARY1);
+
+      // Remote MAC
+      line = newLine(&grid);
+      label = new StaticText(line, rect_t{}, STR_BLUETOOTH_DIST_ADDR, 0,
+                             COLOR_THEME_PRIMARY1);
+      lv_obj_set_style_pad_left(label->getLvObj(), lv_dpx(8), LV_PART_MAIN);
+      new StaticText(
+          line, rect_t{},
+          bluetooth.distantAddr[0] == '\0' ? "---" : bluetooth.distantAddr, 0,
+          COLOR_THEME_PRIMARY1);
+
+      // BT radio name
+      line = newLine(&grid);
+      label = new StaticText(line, rect_t{}, STR_NAME, 0, COLOR_THEME_PRIMARY1);
+      lv_obj_set_style_pad_left(label->getLvObj(), lv_dpx(8), LV_PART_MAIN);
+      rte = new RadioTextEdit(line, rect_t{}, g_eeGeneral.bluetoothName,
+                              LEN_BLUETOOTH_NAME);
+    }
   }
 
  protected:
-  uint8_t lastModule = 0;
+  Choice *btMode = nullptr;
+  RadioTextEdit *rte = nullptr;
+
+ private:
+  bool modechoiceopen = false;
+  uint8_t lastbluetoothstate = BLUETOOTH_STATE_OFF;
 };
+#endif
 
 void RadioHardwarePage::build(FormWindow * window)
 {
-  FormGridLayout grid;
-#if LCD_W > LCD_H
-  grid.setLabelWidth(180);
-#else
-  grid.setLabelWidth(130);
-#endif
-  grid.spacer(PAGE_PADDING);
+  window->setFlexLayout();
+  FlexGridLayout grid(col_dsc, row_dsc, 2);
+  lv_obj_set_style_pad_all(window->getLvObj(), lv_dpx(8), 0);
 
-  // Calibration
-  new StaticText(window, grid.getLabelSlot(), STR_INPUTS, 0, COLOR_THEME_PRIMARY1 | FONT(BOLD));
-  auto calib = new TextButton(window, grid.getFieldSlot(), STR_CALIBRATION);
-  calib->setPressHandler([=]() -> uint8_t {
-      auto calibrationPage = new RadioCalibrationPage();
-      calibrationPage->setCloseHandler([=]() {
-          calib->setFocus(SET_FOCUS_DEFAULT);
-      });
-      return 0;
+  // TODO: sub-title?
+
+  // Batt meter range - Range 3.0v to 16v
+  auto line = window->newLine(&grid);
+  new StaticText(line, rect_t{}, STR_BATTERY_RANGE, 0, COLOR_THEME_PRIMARY1);
+
+  auto box = new FormGroup(line, rect_t{});
+  box->setFlexLayout(LV_FLEX_FLOW_ROW, lv_dpx(4));
+
+  auto batMin =
+      new NumberEdit(box, rect_t{}, -60 + 90, g_eeGeneral.vBatMax + 29 + 90,
+                     GET_SET_WITH_OFFSET(g_eeGeneral.vBatMin, 90), 0, PREC1);
+  batMin->setSuffix("V");
+  new StaticText(box, rect_t{}, "-");
+  auto batMax =
+      new NumberEdit(box, rect_t{}, g_eeGeneral.vBatMin - 29 + 120, 40 + 120,
+                     GET_SET_WITH_OFFSET(g_eeGeneral.vBatMax, 120), 0, PREC1);
+  batMax->setSuffix("V");
+
+  batMin->setSetValueHandler([=](int32_t newValue) {
+    g_eeGeneral.vBatMin = newValue - 90;
+    SET_DIRTY();
+    batMax->setMin(g_eeGeneral.vBatMin - 29 + 120);
+    batMax->invalidate();
   });
-  grid.nextLine();
 
-  // Sticks
-  new Subtitle(window, grid.getLineSlot(), STR_STICKS, 0, COLOR_THEME_PRIMARY1);
-  grid.nextLine();
-  for (int i = 0; i < NUM_STICKS; i++) {
-    new StaticText(window, grid.getLabelSlot(true), TEXT_AT_INDEX(STR_VSRCRAW, (i + 1)), 0, COLOR_THEME_PRIMARY1);
-    new RadioTextEdit(window, grid.getFieldSlot(2,0), g_eeGeneral.anaNames[i], LEN_ANA_NAME);
-    grid.nextLine();
-  }
-
-  // Pots
-  new Subtitle(window, grid.getLineSlot(), STR_POTS, 0, COLOR_THEME_PRIMARY1);
-  grid.nextLine();
-  for (int i = 0; i < NUM_POTS; i++) {
-    // Display EX3 & EX4 (= last two pots) only when FlySky gimbals are present
-#if !defined(SIMU) && defined(RADIO_FAMILY_T16)
-      if (!globalData.flyskygimbals && (i >= (NUM_POTS - 2)))
-        continue;
-#endif
-
-    new StaticText(window, grid.getLabelSlot(true), TEXT_AT_INDEX(STR_VSRCRAW, (i + NUM_STICKS + 1)), 0, COLOR_THEME_PRIMARY1);
-    new RadioTextEdit(window, grid.getFieldSlot(2,0), g_eeGeneral.anaNames[i + NUM_STICKS], LEN_ANA_NAME);
-    new Choice(window, grid.getFieldSlot(2,1), STR_POTTYPES, POT_NONE, POT_WITHOUT_DETENT,
-               [=]() -> int {
-                   return bfGet<uint32_t>(g_eeGeneral.potsConfig, 2*i, 2);
-               },
-               [=](int newValue) {
-                   g_eeGeneral.potsConfig = bfSet<uint32_t>(g_eeGeneral.potsConfig, newValue, 2*i, 2);
-                   SET_DIRTY();
-               });
-    grid.nextLine();
-  }
-
-  // Sliders
-  new Subtitle(window, grid.getLineSlot(), STR_SLIDERS, 0, COLOR_THEME_PRIMARY1);
-  grid.nextLine();
-  for (int i = 0; i < NUM_SLIDERS; i++) {
-    const int idx = i + NUM_STICKS + NUM_POTS;
-    new StaticText(window, grid.getLabelSlot(true), TEXT_AT_INDEX(STR_VSRCRAW, idx + 1), 0, COLOR_THEME_PRIMARY1);
-    new RadioTextEdit(window, grid.getFieldSlot(2, 0), g_eeGeneral.anaNames[idx], LEN_ANA_NAME);
-    new Choice(
-        window, grid.getFieldSlot(2, 1), STR_SLIDERTYPES, SLIDER_NONE,
-        SLIDER_WITH_DETENT,
-        [=]() -> int {
-          uint8_t mask = (0x01 << i);
-          return (g_eeGeneral.slidersConfig & mask) >> i;
-        },
-        [=](int newValue) {
-          uint8_t mask = (0x01 << i);
-          g_eeGeneral.slidersConfig &= ~mask;
-          g_eeGeneral.slidersConfig |= (newValue << i);
-          SET_DIRTY();
-        });
-    grid.nextLine();
-  }
-
-  // Switches
-  new Subtitle(window, grid.getLineSlot(), STR_SWITCHES, 0, COLOR_THEME_PRIMARY1);
-  grid.nextLine();
-  for (int i = 0; i < NUM_SWITCHES; i++) {
-    new SwitchDynamicLabel(window, grid.getLabelSlot(true), i);
-    new RadioTextEdit(window, grid.getFieldSlot(2, 0), g_eeGeneral.switchNames[i], LEN_SWITCH_NAME);
-    new Choice(window, grid.getFieldSlot(2, 1), STR_SWTYPES, SWITCH_NONE, SWITCH_TYPE_MAX(i),
-               [=]() -> int {
-                   return SWITCH_CONFIG(i);
-               },
-               [=](int newValue) {
-                   swconfig_t mask = (swconfig_t) 0x03 << (2 * i);
-                   g_eeGeneral.switchConfig = (g_eeGeneral.switchConfig & ~mask) | ((swconfig_t(newValue) & 0x03) << (2 * i));
-                   SET_DIRTY();
-               });
-    grid.nextLine();
-  }
+  batMax->setSetValueHandler([=](int32_t newValue) {
+    g_eeGeneral.vBatMax = newValue - 120;
+    SET_DIRTY();
+    batMin->setMax(g_eeGeneral.vBatMax + 29 + 90);
+    batMin->invalidate();
+  });
 
   // Bat calibration
-  new StaticText(window, grid.getLabelSlot(), STR_BATT_CALIB, 0, COLOR_THEME_PRIMARY1);
-  auto batCal = new NumberEdit(window, grid.getFieldSlot(1,0), -127, 127, GET_SET_DEFAULT(g_eeGeneral.txVoltageCalibration));
-  batCal->setDisplayHandler([](BitmapBuffer * dc, LcdFlags flags, int32_t value) {
-      dc->drawNumber(FIELD_PADDING_LEFT, FIELD_PADDING_TOP, getBatteryVoltage(), flags | PREC2, 0, nullptr, "V");
+  line = window->newLine(&grid);
+  new StaticText(line, rect_t{}, STR_BATT_CALIB, 0, COLOR_THEME_PRIMARY1);
+  auto batCal =
+      new NumberEdit(line, rect_t{}, -127, 127,
+                     GET_SET_DEFAULT(g_eeGeneral.txVoltageCalibration));
+  batCal->setDisplayHandler([](int32_t value) {
+    return formatNumberAsString(getBatteryVoltage(), PREC2, 0, nullptr, "V");
   });
   batCal->setWindowFlags(REFRESH_ALWAYS);
-  grid.nextLine();
-
-  // RTC Batt display
-  new StaticText(window, grid.getLabelSlot(), STR_RTC_BATT, 0, COLOR_THEME_PRIMARY1);
-  new DynamicNumber<uint16_t>(window, grid.getFieldSlot(1,0), [] {
-      return getRTCBatteryVoltage();
-  }, COLOR_THEME_PRIMARY1 | PREC2, nullptr, "V");
-  grid.nextLine();
 
   // RTC Batt check enable
-  new StaticText(window, grid.getLabelSlot(), STR_RTC_CHECK, 0, COLOR_THEME_PRIMARY1);
-  new CheckBox(window, grid.getFieldSlot(1,0), GET_SET_INVERTED(g_eeGeneral.disableRtcWarning ));
-  grid.nextLine();
+  line = window->newLine(&grid);
+  new StaticText(line, rect_t{}, STR_RTC_CHECK, 0, COLOR_THEME_PRIMARY1);
+
+  box = new FormGroup(line, rect_t{});
+  box->setFlexLayout(LV_FLEX_FLOW_ROW, lv_dpx(8));
+  lv_obj_set_style_flex_cross_place(box->getLvObj(), LV_FLEX_ALIGN_CENTER, 0);
+  new CheckBox(box, rect_t{}, GET_SET_INVERTED(g_eeGeneral.disableRtcWarning ));
+
+  // RTC Batt display
+  new StaticText(box, rect_t{}, STR_VALUE, 0, COLOR_THEME_PRIMARY1);
+  new DynamicNumber<uint16_t>(box, rect_t{}, [] {
+      return getRTCBatteryVoltage();
+  }, COLOR_THEME_PRIMARY1 | PREC2, nullptr, "V");
+
+  // ADC filter
+  line = window->newLine(&grid);
+  new StaticText(line, rect_t{}, STR_JITTER_FILTER, 0, COLOR_THEME_PRIMARY1);
+  new CheckBox(line, rect_t{}, GET_SET_INVERTED(g_eeGeneral.noJitterFilter));
 
 #if defined(HARDWARE_INTERNAL_MODULE)
-  new Subtitle(window, grid.getLineSlot(), TR_INTERNALRF, 0, COLOR_THEME_PRIMARY1);
-  grid.nextLine();
-  grid.addWindow(new InternalModuleWindow(window, {0, grid.getWindowHeight(), LCD_W, 0}));
+  new Subtitle(window, rect_t{}, TR_INTERNALRF, 0, COLOR_THEME_PRIMARY1);
+  auto mod = new InternalModuleWindow(window, rect_t{});
+  mod->padLeft(lv_dpx(8));
 #endif
 
 #if defined(BLUETOOTH)
-  // Bluetooth mode
-  {
-    new Subtitle(window, grid.getLineSlot(), STR_BLUETOOTH, 0, COLOR_THEME_PRIMARY1);
-    grid.nextLine();
-    grid.addWindow(new BluetoothConfigWindow(window, {0, grid.getWindowHeight(), LCD_W, 0}));
-  }
+  new Subtitle(window, rect_t{}, STR_BLUETOOTH, 0, COLOR_THEME_PRIMARY1);
+  new BluetoothConfigWindow(window, rect_t{});
 #endif
 
-  new Subtitle(window, grid.getLineSlot(), STR_AUX_SERIAL_MODE, 0,
-               COLOR_THEME_PRIMARY1);
-  grid.nextLine();
-  grid.addWindow(new SerialConfigWindow(window, {0, grid.getWindowHeight(), LCD_W, 0}));
+  new Subtitle(window, rect_t{}, STR_AUX_SERIAL_MODE, 0, COLOR_THEME_PRIMARY1);
+  auto serial = new SerialConfigWindow(window, rect_t{});
+  serial->padLeft(lv_dpx(8));
 
-  // ADC filter
-  new StaticText(window, grid.getLabelSlot(), STR_JITTER_FILTER, 0, COLOR_THEME_PRIMARY1);
-  new CheckBox(window, grid.getFieldSlot(1,0), GET_SET_INVERTED(g_eeGeneral.noJitterFilter));
-  grid.nextLine();
+  // Calibration
+  new Subtitle(window, rect_t{}, STR_INPUTS, 0, COLOR_THEME_PRIMARY1);
 
-  // Debugs
-  new StaticText(window, grid.getLabelSlot(), STR_DEBUG, 0, COLOR_THEME_PRIMARY1 | FONT(BOLD));
-  auto debugAnas = new TextButton(window, grid.getFieldSlot(2, 0), STR_ANALOGS_BTN);
-  debugAnas->setPressHandler([=]() -> uint8_t {
-      auto debugAnalogsPage = new RadioAnalogsDiagsViewPageGroup();
-      debugAnalogsPage->setCloseHandler([=]() {
-          calib->setFocus(SET_FOCUS_DEFAULT);
-      });
+  box = new FormGroup(window, rect_t{});
+  box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, lv_dpx(8));
+  lv_obj_set_style_flex_main_place(box->getLvObj(), LV_FLEX_ALIGN_SPACE_EVENLY, 0);
+  box->padRow(lv_dpx(8));
+  box->padAll(lv_dpx(8));
+  
+  auto calib = new TextButton(box, rect_t{}, STR_CALIBRATION);
+  calib->setPressHandler([=]() -> uint8_t {
+      new RadioCalibrationPage();
       return 0;
   });
+  lv_obj_set_style_min_width(calib->getLvObj(), LV_DPI_DEF, 0);
 
-  auto debugKeys = new TextButton(window, grid.getFieldSlot(2, 1), STR_KEYS_BTN);
-  debugKeys->setPressHandler([=]() -> uint8_t {
-    auto debugKeysPage = new RadioKeyDiagsPage();
-    debugKeysPage->setCloseHandler([=]() {
-        calib->setFocus(SET_FOCUS_DEFAULT);
-    });
-    return 0;
-  });
-  grid.nextLine();
+  // Sticks
+  auto btn = makeHWInputButton<HWSticks>(box, STR_STICKS);
+  lv_obj_set_style_min_width(btn->getLvObj(), LV_DPI_DEF, 0);
 
-// extra bottom padding if touchscreen
-#if defined HARDWARE_TOUCH
-  grid.nextLine();
+  // Pots
+  btn = makeHWInputButton<HWPots>(box, STR_POTS);
+  lv_obj_set_style_min_width(btn->getLvObj(), LV_DPI_DEF, 0);
+
+  // Sliders
+#if (NUM_SLIDERS > 0)
+  btn = makeHWInputButton<HWSliders>(box, STR_SLIDERS);
+  lv_obj_set_style_min_width(btn->getLvObj(), LV_DPI_DEF, 0);
 #endif
 
-  window->setInnerHeight(grid.getWindowHeight());
+  // Switches
+  btn = makeHWInputButton<HWSwitches>(box, STR_SWITCHES);
+  lv_obj_set_style_min_width(btn->getLvObj(), LV_DPI_DEF, 0);
+  
+  // Debugs
+  new Subtitle(window, rect_t{}, STR_DEBUG, 0, COLOR_THEME_PRIMARY1);
+
+  box = new FormGroup(window, rect_t{});
+  box->setFlexLayout(LV_FLEX_FLOW_ROW_WRAP, lv_dpx(8));
+  lv_obj_set_style_flex_main_place(box->getLvObj(), LV_FLEX_ALIGN_SPACE_EVENLY, 0);
+  box->padRow(lv_dpx(8));
+  box->padAll(lv_dpx(8));
+
+  btn = new TextButton(box, rect_t{}, STR_ANALOGS_BTN, [=]() -> uint8_t {
+    new RadioAnalogsDiagsViewPageGroup();
+    return 0;
+  });
+  lv_obj_set_style_min_width(btn->getLvObj(), LV_DPI_DEF, 0);
+
+  btn = new TextButton(box, rect_t{}, STR_KEYS_BTN, [=]() -> uint8_t {
+    new RadioKeyDiagsPage();
+    return 0;
+  });
+  lv_obj_set_style_min_width(btn->getLvObj(), LV_DPI_DEF, 0);
 }

@@ -24,19 +24,14 @@
 
 #include "tabsgroup.h"
 
-class ModelOutputsPage: public PageTab {
-  public:
-    ModelOutputsPage();
+class ModelOutputsPage : public PageTab
+{
+ public:
+  ModelOutputsPage();
+  void build(FormWindow* window) override;
 
-    virtual void build(FormWindow * window) override
-    {
-      build(window, 0);
-    }
-
-  protected:
-    void build(FormWindow * window, int8_t focusChannel);
-    void rebuild(FormWindow * window, int8_t focusChannel);
-    void editOutput(FormWindow * window, uint8_t channel);
+ protected:
+  void editOutput(uint8_t channel);
 };
 
 #endif // _MODEL_OUTPUTS_H_

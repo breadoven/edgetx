@@ -19,7 +19,12 @@
  * GNU General Public License for more details.
  */
 
-#include "opentx.h"
+#include "opentx_types.h"
+#include "board.h"
+
+#if !defined(BOOT)
+#include "myeeprom.h"
+#endif
 
 void backlightInit()
 {
@@ -97,4 +102,9 @@ void backlightEnable(uint8_t dutyCycle)
   else if ((BACKLIGHT_TIMER->BDTR & TIM_BDTR_MOE) == 0) {
     BACKLIGHT_TIMER->BDTR |= TIM_BDTR_MOE;
   }
+}
+
+void backlightFullOn()
+{
+  backlightEnable(BACKLIGHT_LEVEL_MAX);
 }

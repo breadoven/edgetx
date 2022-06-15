@@ -299,6 +299,8 @@ enum Analogs {
 #define SLIDER_FIRST  0
 #define SLIDER_LAST  -1
 
+#define DEFAULT_STICK_DEADZONE          2
+
 #define DEFAULT_POTS_CONFIG (POT_WITHOUT_DETENT << 0) + (POT_WITHOUT_DETENT << 2) // 2 pots without detent
 
 enum CalibratedAnalogs {
@@ -396,40 +398,51 @@ const etx_serial_port_t* auxSerialGetPort(int port_nr);
 // LCD driver
 #define LCD_W                           320
 #define LCD_H                           480
+
+#define LCD_PHYS_W                      320
+#define LCD_PHYS_H                      480
+
 #define LCD_DEPTH                       16
 #define LCD_CONTRAST_DEFAULT            20
+
 void lcdInit();
-void lcdRefresh();
 void lcdCopy(void * dest, void * src);
 void DMAFillRect(uint16_t * dest, uint16_t destw, uint16_t desth, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
 void DMACopyBitmap(uint16_t * dest, uint16_t destw, uint16_t desth, uint16_t x, uint16_t y, const uint16_t * src, uint16_t srcw, uint16_t srch, uint16_t srcx, uint16_t srcy, uint16_t w, uint16_t h);
 void DMACopyAlphaBitmap(uint16_t * dest, uint16_t destw, uint16_t desth, uint16_t x, uint16_t y, const uint16_t * src, uint16_t srcw, uint16_t srch, uint16_t srcx, uint16_t srcy, uint16_t w, uint16_t h);
 void DMABitmapConvert(uint16_t * dest, const uint8_t * src, uint16_t w, uint16_t h, uint32_t format);
-void lcdStoreBackupBuffer();
-int lcdRestoreBackupBuffer();
-void lcdSetContrast();
 void lcdOff();
 void lcdOn();
-#define lcdSetRefVolt(...)
 #define lcdRefreshWait(...)
 
 // Backlight driver
-void backlightInit();
-#if defined(SIMU) || !defined(__cplusplus)
-#define backlightEnable(...)
-#define isBacklightEnabled() (true)
-#else
-void backlightEnable(uint8_t dutyCycle = 0);
-bool isBacklightEnabled();
-#endif
-
 #define BACKLIGHT_LEVEL_MAX             100
 #define BACKLIGHT_FORCED_ON             BACKLIGHT_LEVEL_MAX + 1
 #define BACKLIGHT_LEVEL_MIN             1
 
-#define BACKLIGHT_ENABLE()              backlightEnable(globalData.unexpectedShutdown ? BACKLIGHT_LEVEL_MAX : BACKLIGHT_LEVEL_MAX - currentBacklightBright)
-#define BACKLIGHT_DISABLE()             backlightEnable(globalData.unexpectedShutdown ? BACKLIGHT_LEVEL_MAX : ((g_eeGeneral.blOffBright == BACKLIGHT_LEVEL_MIN) && (g_eeGeneral.backlightMode != e_backlight_mode_off)) ? 0 : g_eeGeneral.blOffBright)
+extern bool boardBacklightOn;
+void backlightInit();
+void backlightEnable(uint8_t dutyCycle);
+void backlightFullOn();
+bool isBacklightEnabled();
 
+#define BACKLIGHT_ENABLE()                                               \
+  {                                                                      \
+    boardBacklightOn = true;                                             \
+    backlightEnable(globalData.unexpectedShutdown                        \
+                        ? BACKLIGHT_LEVEL_MAX                            \
+                        : BACKLIGHT_LEVEL_MAX - currentBacklightBright); \
+  }
+
+#define BACKLIGHT_DISABLE()                                                 \
+  {                                                                         \
+    boardBacklightOn = false;                                               \
+    backlightEnable(globalData.unexpectedShutdown ? BACKLIGHT_LEVEL_MAX     \
+                    : ((g_eeGeneral.blOffBright == BACKLIGHT_LEVEL_MIN) &&  \
+                       (g_eeGeneral.backlightMode != e_backlight_mode_off)) \
+                        ? 0                                                 \
+                        : g_eeGeneral.blOffBright);                         \
+  }
 
 #if !defined(SIMU)
 void usbJoystickUpdate();
@@ -478,6 +491,7 @@ int32_t getVolume();
 #define VOLUME_LEVEL_DEF               12
 
 // Telemetry driver
+#define INTMODULE_FIFO_SIZE            512
 #define TELEMETRY_FIFO_SIZE             512
 void telemetryPortInit(uint32_t baudrate, uint8_t mode);
 void telemetryPortSetDirectionOutput();
@@ -515,5 +529,7 @@ void checkTrainerSettings();
 bool touchPanelEventOccured();
 struct TouchState touchPanelRead();
 struct TouchState getInternalTouchState();
+
+#define BATTERY_DIVIDER 2942
 
 #endif // _BOARD_H_

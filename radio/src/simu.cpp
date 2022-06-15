@@ -96,7 +96,6 @@ FXIMPLEMENT(OpenTxSim, FXMainWindow, OpenTxSimMap, ARRAYNUMBER(OpenTxSimMap))
 OpenTxSim::OpenTxSim(FXApp* a):
   FXMainWindow(a, "OpenTX Simu", nullptr, nullptr, DECOR_ALL, 20, 90, 0, 0)
 {
-  lcdInit();
   bmp = new FXPPMImage(getApp(), nullptr, IMAGE_OWNED|IMAGE_KEEP|IMAGE_SHMI|IMAGE_SHMP, W2, H2);
 
 #if defined(SIMU_AUDIO)
@@ -489,12 +488,13 @@ long OpenTxSim::onTimeout(FXObject*, FXSelector, void*)
 #endif
   }
 
+#if !defined(SIMU_BOOTLOADER)
   per10ms();
-  static int timeToRefresh;
-  if (++timeToRefresh >= 5) {
-    timeToRefresh = 0;
-    refreshDisplay();
-  }
+#else
+  void interrupt10ms();
+  interrupt10ms();
+#endif
+  refreshDisplay();
   getApp()->addTimeout(this, 2, 10);
   return 0;
 }
@@ -518,63 +518,67 @@ void OpenTxSim::setPixel(int x, int y, FXColor color)
 #endif
 }
 
+// from lcd driver
+void lcdFlushed();
+
 void OpenTxSim::refreshDisplay()
 {
   static bool lightEnabled = (bool)isBacklightEnabled();
 
   if ((bool(isBacklightEnabled()) != lightEnabled) || simuLcdRefresh) {
 
-    simuLcdRefresh = false;
-
     if (bool(isBacklightEnabled()) != lightEnabled) {
       lightEnabled = (bool)isBacklightEnabled();
       TRACE("backlight %s", lightEnabled ? "ON" : "OFF");
     }
-    
+
+#if !defined(COLORLCD)
     FXColor offColor = isBacklightEnabled() ? BL_COLOR : FXRGB(200, 200, 200);
-#if LCD_DEPTH == 1
     FXColor onColor = FXRGB(0, 0, 0);
 #endif
-    for (int x=0; x<LCD_W; x++) {
-      for (int y=0; y<LCD_H; y++) {
+    for (int x = 0; x < LCD_W; x++) {
+      for (int y = 0; y < LCD_H; y++) {
 #if defined(COLORLCD)
-    	pixel_t z = simuLcdBuf[y * LCD_W + x];
-    	if (1) {
-          if (z == 0) {
-            setPixel(x, y, FXRGB(0, 0, 0));
-          }
-          else if (z == 0xFFFF) {
-            setPixel(x, y, FXRGB(255, 255, 255));
-          }
-          else {
-            FXColor color = FXRGB(((z & 0xF800) >> 8) + ((z & 0xE000) >> 13), ((z & 0x07E0) >> 3) + ((z & 0x0600) >> 9), (((z & 0x001F) << 3) & 0x00F8) + ((z & 0x001C) >> 2));
-            setPixel(x, y, color);
-          }
-    	}
-#elif LCD_DEPTH == 4
-        pixel_t * p = &simuLcdBuf[y / 2 * LCD_W + x];
+        pixel_t z = simuLcdBuf[y * LCD_W + x];
+        FXColor color =
+          FXRGB(((z & 0xF800) >> 8) + ((z & 0xE000) >> 13),
+                ((z & 0x07E0) >> 3) + ((z & 0x0600) >> 9),
+                (((z & 0x001F) << 3) & 0x00F8) + ((z & 0x001C) >> 2));
+        setPixel(x, y, color);
+#else
+#if LCD_DEPTH == 4
+        pixel_t *p = &simuLcdBuf[y / 2 * LCD_W + x];
         uint8_t z = (y & 1) ? (*p >> 4) : (*p & 0x0F);
         if (z) {
           FXColor color;
           if (isBacklightEnabled())
-            color = FXRGB(47-(z*47)/15, 123-(z*123)/15, 227-(z*227)/15);
+            color = FXRGB(47 - (z * 47) / 15, 123 - (z * 123) / 15,
+                          227 - (z * 227) / 15);
           else
-            color = FXRGB(200-(z*200)/15, 200-(z*200)/15, 200-(z*200)/15);
+            color = FXRGB(200 - (z * 200) / 15, 200 - (z * 200) / 15,
+                          200 - (z * 200) / 15);
           setPixel(x, y, color);
         }
-#else
-        if (simuLcdBuf[x+(y/8)*LCD_W] & (1<<(y%8))) {
+#else  // LCD_DEPTH == 1
+        if (simuLcdBuf[x + (y / 8) * LCD_W] & (1 << (y % 8))) {
           setPixel(x, y, onColor);
         }
 #endif
         else {
           setPixel(x, y, offColor);
         }
+#endif  // !defined(COLORLCD)
       }
     }
+#if defined(COLORLCD)
+    if (!lightEnabled) { bmp->fade(0, 50); }
+#endif
 
     bmp->render();
     bmf->setImage(bmp);
+
+    simuLcdRefresh = false;
+    lcdFlushed();
   }
 }
 
@@ -629,7 +633,10 @@ int main(int argc, char ** argv)
 #if defined(EEPROM) || defined(EEPROM_RLC)
   startEepromThread(argc >= 2 ? argv[1] : "eeprom.bin");
 #endif
+
+#if !defined(SIMU_BOOTLOADER)
   startAudioThread();
+#endif
   simuStart(true/*false*/, argc >= 3 ? argv[2] : 0, argc >= 4 ? argv[3] : 0);
 
   return application.run();

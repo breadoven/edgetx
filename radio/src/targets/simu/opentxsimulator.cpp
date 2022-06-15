@@ -132,8 +132,7 @@ void OpenTxSimulator::init()
 
 void OpenTxSimulator::start(const char * filename, bool tests)
 {
-  if (isRunning())
-    return;
+  if (isRunning()) return;
   ETXS_DBG << "file:" << filename << "tests:" << tests;
 
   QMutexLocker lckr(&m_mtxSimuMain);
@@ -277,8 +276,7 @@ void OpenTxSimulator::setInputValue(int type, uint8_t index, int16_t value)
 void OpenTxSimulator::rotaryEncoderEvent(int steps)
 {
 #if defined(ROTARY_ENCODER_NAVIGATION)
-  (g_eeGeneral.rotEncDirection ? steps *= -1 : steps);
-
+  (g_eeGeneral.rotEncDirection == 1 ? steps *= -1 : steps);
   ROTARY_ENCODER_NAVIGATION_VALUE += steps * ROTARY_ENCODER_GRANULARITY;
 #else
   // TODO : this should probably be handled in the GUI
@@ -373,6 +371,11 @@ void OpenTxSimulator::touchEvent(int type, int x, int y)
 #if defined(HARDWARE_TOUCH)
   simTouchOccured=true;
 #endif
+}
+
+void OpenTxSimulator::lcdFlushed()
+{
+  ::lcdFlushed();
 }
 
 void OpenTxSimulator::setTrainerTimeout(uint16_t ms)

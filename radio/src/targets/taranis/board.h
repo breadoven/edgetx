@@ -23,13 +23,13 @@
 #define _BOARD_H_
 
 #include <inttypes.h>
+#include "hal.h"
+#include "hal/serial_port.h"
+#include "watchdog_driver.h"
+
 #include "definitions.h"
 #include "opentx_constants.h"
 #include "board_common.h"
-#include "hal.h"
-#include "hal/serial_port.h"
-
-#include "watchdog_driver.h"
 
 #if defined(RADIO_TX12) || defined(RADIO_ZORRO)
   #define  NAVIGATION_X7_TX12
@@ -699,19 +699,21 @@ void pwrResetHandler();
 #endif
 
 // Backlight driver
-void backlightInit();
-void backlightDisable();
 #define BACKLIGHT_DISABLE()             backlightDisable()
 #define BACKLIGHT_FORCED_ON             101
+
+void backlightInit();
+void backlightDisable();
+void backlightFullOn();
 uint8_t isBacklightEnabled();
-#if !defined(__cplusplus)
-  #define backlightEnable(...)
-#elif defined(PCBX9E) || defined(PCBX9DP)
-  void backlightEnable(uint8_t level = 0, uint8_t color = 0);
-  #define BACKLIGHT_ENABLE()            backlightEnable(currentBacklightBright, g_eeGeneral.backlightColor)
+
+#if defined(PCBX9E) || defined(PCBX9DP)
+  void backlightEnable(uint8_t level, uint8_t color);
+  #define BACKLIGHT_ENABLE() \
+    backlightEnable(currentBacklightBright, g_eeGeneral.backlightColor)
 #else
-  void backlightEnable(uint8_t level = 0);
-  #define BACKLIGHT_ENABLE()            backlightEnable(currentBacklightBright)
+  void backlightEnable(uint8_t level);
+  #define BACKLIGHT_ENABLE() backlightEnable(currentBacklightBright)
 #endif
 
 #if !defined(SIMU)
@@ -947,6 +949,7 @@ void lcdSetRefVolt(unsigned char val);
 #ifdef __cplusplus
 void lcdSetContrast(bool useDefault = false);
 #endif
+void lcdFlushed();
 
 // Top LCD driver
 #if defined(TOPLCD_GPIO)
@@ -976,6 +979,8 @@ void setTopBatteryValue(uint32_t volts);
 extern Fifo<uint8_t, TELEMETRY_FIFO_SIZE> telemetryFifo;
 #endif
 
+#define INTMODULE_FIFO_SIZE            128
+
 // Gyro driver
 #define GYRO_VALUES_COUNT               6
 #define GYRO_BUFFER_LENGTH              (GYRO_VALUES_COUNT * sizeof(int16_t))
@@ -985,5 +990,21 @@ int gyroRead(uint8_t buffer[GYRO_BUFFER_LENGTH]);
 #define GYRO_MAX_RANGE                  60
 #define GYRO_OFFSET_MIN                 -30
 #define GYRO_OFFSET_MAX                 10
+
+#if defined (RADIO_TX12)
+  #define BATTERY_DIVIDER 22830
+#elif defined (RADIO_T8)
+  #define BATTERY_DIVIDER 50000
+#elif defined (RADIO_ZORRO)
+  #define BATTERY_DIVIDER 23711 // = 2047*128*BATT_SCALE/(100*(VREF*(160+499)/160))
+#else
+  #define BATTERY_DIVIDER 26214
+#endif 
+
+#if defined(RADIO_ZORRO)
+  #define VOLTAGE_DROP 45
+#else
+  #define VOLTAGE_DROP 20
+#endif
 
 #endif // _BOARD_H_
